@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>集計アプリ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- PWA用 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f8f8f8">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <script>
+    // Service Worker 登録
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js")
+          .then(reg => console.log("Service Worker registered:", reg))
+          .catch(err => console.error("Service Worker error:", err));
+      });
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+      background: #f8f8f8;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    /* ようこそメッセージ */
+    #welcome-message {
+      font-size: 6vw;
+      font-weight: bold;
+      position: absolute;
+      top: 15%;
+      opacity: 1;
+      transition: opacity 1s ease-out;
+      text-align: center;
+      width: 100%;
+    }
+
+    /* 初期画面のボタン */
+    .top-buttons {
+      position: absolute;
+      top: 5%;
+      display: flex;
+      gap: 5vw;
+      justify-content: center;
+      width: 100%;
+    }
+    .button {
+      min-width: 50px;
+      min-height: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 6vw;
+      font-weight: bold;
+      color: black;
+      user-select: none;
+    }
+    #add-alpha { background: red; }
+    #remove-beta { background: blue; color: white; }
+
+    /* 集計セット */
+    .textbox-set {
+      margin-top: 15vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+    .textbox-set input {
+      width: 90%;
+      max-width: 300px;
+      padding: 10px;
+      margin-bottom: 8px;
+      font-size: 5vw;
+    }
+    .counter {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .counter-box {
+      width: 60px;
+      height: 40px;
+      border: 1px solid black;
+      text-align: center;
+      line-height: 40px;
+      margin: 0 10px;
+      font-size: 5vw;
+    }
+    .counter .button {
+      min-width: 40px;
+      min-height: 40px;
+      font-size: 5vw;
+    }
+    .btn-delta { background: green; }
+    .btn-psi { background: yellow; }
+
+    /* 計算ボタン */
+    #calc-button {
+      background: orange;
+      padding: 12px 24px;
+      font-size: 5vw;
+      font-weight: bold;
+      border: none;
+      margin-top: auto;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    /* 結果表示 */
+    #result-container {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #result-box {
+      border: 2px solid black;
+      padding: 10px 20px;
+      font-size: 5vw;
+      font-weight: bold;
+      background: white;
+    }
+    #reset-button {
+      background: gray;
+      color: white;
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-size: 5vw;
+    }
+  </style>
+</head>
+<body>
+  <!-- ようこそ -->
+  <div id="welcome-message">ようこそ</div>
+
+  <!-- 初期画面の＋−ボタン -->
+  <div class="top-buttons">
+    <div id="add-alpha" class="button">+</div>
+    <div id="remove-beta" class="button">−</div>
+  </div>
+
+  <!-- 集計セットコンテナ -->
+  <div id="sets-container"></div>
+
+  <!-- 計算ボタン -->
+  <button id="calc-button">計算</button>
+
+  <!-- 結果表示 -->
+  <div id="result-container" style="display:none;">
+    <div id="result-box"></div>
+    <button id="reset-button">リセット</button>
+  </div>
+
+  <script>
+    // ようこそメッセージのフェードアウト
+    window.onload = function() {
+      setTimeout(() => {
+        document.getElementById("welcome-message").style.opacity = 0;
+      }, 3000);
+    };
+
+    const setsContainer = document.getElementById("sets-container");
+    let setCount = 0;
+    const maxSets = 6;
+
+    function createSet(index) {
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("textbox-set");
+      wrapper.dataset.index = index;
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = `テキスト ${index+1}`;
+      wrapper.appendChild(input);
+
+      const counter = document.createElement("div");
+      counter.classList.add("counter");
+
+      const btnPsi = document.createElement("div");
+      btnPsi.className = "button btn-psi";
+      btnPsi.textContent = "−";
+
+      const counterBox = document.createElement("div");
+      counterBox.className = "counter-box";
+      counterBox.textContent = "0";
+
+      const btnDelta = document.createElement("div");
+      btnDelta.className = "button btn-delta";
+      btnDelta.textContent = "+";
+
+      btnPsi.addEventListener("click", () => {
+        counterBox.textContent = parseInt(counterBox.textContent) - 1;
+      });
+      btnDelta.addEventListener("click", () => {
+        counterBox.textContent = parseInt(counterBox.textContent) + 1;
+      });
+
+      counter.appendChild(btnPsi);
+      counter.appendChild(counterBox);
+      counter.appendChild(btnDelta);
+
+      wrapper.appendChild(counter);
+      return wrapper;
+    }
+
+    document.getElementById("add-alpha").addEventListener("click", () => {
+      if (setCount < maxSets) {
+        const newSet = createSet(setCount);
+        setsContainer.appendChild(newSet);
+        setCount++;
+      }
+    });
+
+    document.getElementById("remove-beta").addEventListener("click", () => {
+      if (setCount > 0) {
+        setsContainer.removeChild(setsContainer.lastChild);
+        setCount--;
+      }
+    });
+
+    document.getElementById("calc-button").addEventListener("click", () => {
+      let sum = 0;
+      const boxes = document.querySelectorAll(".counter-box");
+      boxes.forEach(box => sum += parseInt(box.textContent));
+      document.getElementById("result-box").textContent = `結果: ${sum}`;
+      document.getElementById("result-container").style.display = "flex";
+    });
+
+    document.getElementById("reset-button").addEventListener("click", () => {
+      setsContainer.innerHTML = "";
+      setCount = 0;
+      document.getElementById("result-container").style.display = "none";
+    });
+  </script>
+</body>
+</html>
