@@ -1,0 +1,8 @@
+{
+  "name": "集計アプリ",
+  "short_name": "集計",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff9800",
+}
